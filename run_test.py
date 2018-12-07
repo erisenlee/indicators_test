@@ -13,7 +13,7 @@ def get_average_time(totaltime, order_count):
 
 def main():
 # from . import core
-    data = Dataset('dbdevelop')
+    data = Dataset('dbtest')
     indicators_dataset = data.get_dataset()
     assert_data = data.get_assert_data()
     try:

@@ -1,0 +1,7 @@
+{%macro input(name,label,placeholder='',type='text')%}
+<div class="form-group">
+  <label for="{{name}}">{{label}}</label>
+  <input type="{{type}}" name="{{name}}" id="" class="form-control" placeholder="{{placeholder}}" aria-describedby="helpId">
+  <!-- <small id="helpId" class="text-muted">Help text</small> -->
+</div>
+{%endmacro%}

@@ -1,0 +1,10 @@
+{%extends 'base.html' %}
+{% from 'macro.html' import input as input_field %}
+{%block main%}
+<p>{{data}}</p>
+<form action="{{ url('index') }}" method="post">
+    {{input_field('city_id','city_id','city_id')}}
+    <button type="submit" class="btn btn-primary">Submit</button>
+
+</form>
+{%endblock%}

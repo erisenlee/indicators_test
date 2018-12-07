@@ -30,15 +30,25 @@ def timestamp_to_datetime(time):
     time = int(str(time)[:-3])
     return datetime.fromtimestamp(time)
 
+class Singleton:
+    def __new__(cls, *args, **kwargs):
+        if hasattr(cls, 'instance'):
+            return cls.__dict__['instance']
+        instance = super(Singleton, cls).__new__(cls, *args, **kwargs)
+        return instance
+
 
     
 
 if __name__ == '__main__':
-    c = ReadConfig()
-    value=c.get_section('db')
-    print(value)
+    # c = ReadConfig()
+    # value=c.get_section('db')
+    # print(value)
+    p = Singleton()
+    s = Singleton()
         
-        
+    print(p)
+    print(s)
     
 
         

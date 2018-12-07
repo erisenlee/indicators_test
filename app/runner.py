@@ -4,11 +4,11 @@ import pandas as pd
 from collections import namedtuple
 
 class Dataset:
-    def __init__(self,db,conn=None, query=None):
+    def __init__(self,db,conn=None, query_dict=None):
         if conn is None:
             self.conn = self._get_conn(db)
-        if query is None:
-            self.query = self._query_string()
+        if query_dict is None:
+            self.query = self._query_string(query_dict)
 
     def _get_conn(self,db):
         db_config = ReadConfig().get_section(db)
@@ -70,7 +70,10 @@ class Dataset:
 
 
 
-    def _query_string(self):
+    def _query_string(self, query_dict=None):
+        query_config = {}
+        if not query_dict:
+            query_config =query_dict
         query_config = ReadConfig().get_section('query')
         query_config = {key: value for key, value in query_config.items() if value}
         time = ReadConfig().get_section('time')
@@ -85,8 +88,12 @@ class Dataset:
         pre_sql = pre_sql.format(table,time['begin'],time['finish'])
         query_config = self._get_query_config()
         query_config = self._map_config(query_config)
+        peak = query_config.get('peak', None)
+        if peak:
+            del query_config['peak']
         courier_type = query_config.get('courier_type', None)
         merchant_name = query_config.get('shipper_name', None)
+
         if courier_type:
             query_config['job_category'] = query_config['courier_type']
             del query_config['courier_type']
