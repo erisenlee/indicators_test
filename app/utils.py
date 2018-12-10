@@ -17,7 +17,7 @@ class ReadConfig:
         if not self.parser.has_section(section_name.upper()):
             raise ValueError('section_name uncorrect')
         options = self.parser.items(section_name.upper())
-        return {name:value for name,value in options}
+        return {name:value for name,value in options if value}
 
     def get_option(self, section, option):
         if self.parser.has_option(section.upper(), option.lower()):
@@ -31,21 +31,32 @@ def timestamp_to_datetime(time):
     return datetime.fromtimestamp(time)
 
 class Singleton:
-    def __new__(cls, *args, **kwargs):
-        if hasattr(cls, 'instance'):
-            return cls.__dict__['instance']
-        instance = super(Singleton, cls).__new__(cls, *args, **kwargs)
-        return instance
+    _instance = None
+    def __new__(cls, **kwargs):
+        if not cls._instance:
+            cls._instance = super(Singleton, cls).__new__(cls, **kwargs)
+        return cls._instance
 
 
-    
+class SingleMeta(type):
+    def __new__(meta, clsname, base, dicts):
+        cls = super().__new__(meta, clsname, base, dicts)
+        dicts['instance'] = None
+        return cls
+    def __init__(cls, clsname, base, dicts):
+        if not dicts['instance']:
+            dicts['instance'] = cls.__new__(cls)
+        super().__init__(cls, clsname, base, dicts)
+
+class Sin(metaclass=SingleMeta):
+    pass
 
 if __name__ == '__main__':
     # c = ReadConfig()
     # value=c.get_section('db')
     # print(value)
-    p = Singleton()
-    s = Singleton()
+    p = Sin()
+    s = Sin()
         
     print(p)
     print(s)

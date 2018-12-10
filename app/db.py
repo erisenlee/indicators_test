@@ -1,8 +1,8 @@
 import pymysql
+from .utils import Singleton
 pymysql.install_as_MySQLdb()
 
 class DbConnection:
-    instance = None
     def __init__(self, host, port, user, password, db):
         self.con = pymysql.connect(host=host, port=int(port), user=user,
                                    password=password, db=db, cursorclass=pymysql.cursors.DictCursor)

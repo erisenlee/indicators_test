@@ -4,21 +4,28 @@ import pandas as pd
 from collections import namedtuple
 
 class Dataset:
-    def __init__(self,db,conn=None, query_dict=None):
-        if conn is None:
-            self.conn = self._get_conn(db)
-        if query_dict is None:
-            self.query = self._query_string(query_dict)
+    def __init__(self,db):
+        self.conn = self._get_conn(db)
 
     def _get_conn(self,db):
         db_config = ReadConfig().get_section(db)
         # print(db_config)
         db = DbConnection(host=db_config['host'], port=db_config['port'],user=db_config['user'],password=db_config['password'],db=db_config['db'])
         return db
+    def get_statistical_table(self):
+        table = ReadConfig().get_option('table', 'table')
+        if not table:
+            return 'no table'
+        return table
 
-    def _get_query_config(self):
+    def get_statistical_date(self):
+        date = ReadConfig().get_section('time')
+        Date = namedtuple('Date', 'start end')        
+        return Date(start=date['begin'], end=date['finish'])
+            
+    def _parse_query_config(self):
         query_config = ReadConfig().get_section('query')
-        query_config = {key: value for key, value in query_config.items() if value}
+        query_config = self._map_config(query_config)
         return query_config
 
     def _map_config(self, query_config):
@@ -41,23 +48,37 @@ class Dataset:
             else:
                 query_config['waybill_type'] = 'booked'
         return query_config
+    
+        
 
-    def _get_sql(self):
-        query_config = self._get_query_config()
-        time = ReadConfig().get_section('time')
-        table = ReadConfig().get_section('table')
-        raw_sql = "SELECT * FROM {} WHERE statistical_date>='{}' and statistical_date<='{}' ".format(table['table'],time['begin'],time['finish'])
-        query_config = self._map_config(query_config)
+
+    def get_statistical_sql(self):
+        time = self.get_statistical_date()
+        table = self.get_statistical_table()
+        pre_sql = f"SELECT * FROM {table} WHERE statistical_date>='{time.start}' and statistical_date<='{time.end}' "
+        query_config = self._parse_query_config()
         if query_config.get('shipper_name', None):
             query_config['merchant_name'] = query_config['shipper_name']
             del query_config['shipper_name']
-        result = []
-        for key, value in query_config.items():
-            s = "and {} = '{}'".format(key, value)
-            result.append(s)
-        # print(result)
-        raw_sql += ' '.join(result)
+        raw_sql = self._get_raw_sql(pre_sql, query_config)
         return raw_sql
+
+    def get_statistical_data(self):
+        sql = self.get_statistical_sql()
+        print(f'execute sql is {sql}')
+        try:
+            result = self.conn.query(sql)
+        except Exception as e:
+            print(f'[!] Get assert data faild.{e} \nExecute sql is \n{sql}')
+        # if len(result) > 1:
+        #     return pd.DataFrame(result)
+        # print(result)
+        try:
+
+            return pd.DataFrame(result)
+        except Exception as e:
+            print(f'[!] Get assert dataframe failed. {e}')
+
 
     def _get_raw_sql(self, pre_sql, query_config):
         result = []
@@ -70,24 +91,29 @@ class Dataset:
 
 
 
-    def _query_string(self, query_dict=None):
-        query_config = {}
-        if not query_dict:
-            query_config =query_dict
+    def get_waybill_sql(self):
+        time = self.get_statistical_date()
+        pre_sql = f"SELECT * FROM t_waybill_0 WHERE finish_time>='{time.start} 00:00:00' and finish_time<='{time.end} 23:59:59' "
         query_config = ReadConfig().get_section('query')
-        query_config = {key: value for key, value in query_config.items() if value}
-        time = ReadConfig().get_section('time')
-        raw_sql = "SELECT * FROM t_waybill_0 WHERE finish_time>='{} 00:00:00' and finish_time<='{} 23:59:59' ".format(time['begin'], time['finish'])
-        if not query_config:
-            return raw_sql
-        raw_sql = self._get_raw_sql(raw_sql, query_config)
+        raw_sql = self._get_raw_sql(pre_sql, query_config)
         return raw_sql
 
+    def get_waybill_df(self):
+        sql =self.get_waybill_sql()
+        print(f'[+] execute sql is {sql}')
+        result = self.conn.query(sql)
+        # print(result)
+        try:
+            dataset = pd.DataFrame(result)
+            if dataset.empty:
+                raise ValueError('[!]get data failed!')
+            return dataset
+        except Exception as e:
+            print(f'[!] read data fail! {e}')
+
+
     def _get_service_indicators(self,table, pre_sql):
-        time = ReadConfig().get_section('time')
-        pre_sql = pre_sql.format(table,time['begin'],time['finish'])
-        query_config = self._get_query_config()
-        query_config = self._map_config(query_config)
+        query_config = self._parse_query_config()
         peak = query_config.get('peak', None)
         if peak:
             del query_config['peak']
@@ -100,7 +126,8 @@ class Dataset:
         if merchant_name:
             query_config['merchant_name'] = query_config['shipper_name']
             del query_config['shipper_name']
-        
+        time = self.get_statistical_date()
+        pre_sql = pre_sql.format(table, time.start, time.end)       
         raw_sql = self._get_raw_sql(pre_sql, query_config)
         print(f'####execute {table} sql : {raw_sql}####\n')
 
@@ -154,35 +181,9 @@ class Dataset:
 
     
 
-    def get_assert_data(self):
-        sql = self._get_sql()
-        print(f'execute sql is {sql}')
-        try:
-            result = self.conn.query(sql)
-        except Exception as e:
-            print(f'[!] Get assert data faild.{e} \nExecute sql is \n{sql}')
-        # if len(result) > 1:
-        #     return pd.DataFrame(result)
-        # print(result)
-        try:
+    
 
-            return pd.DataFrame(result)
-        except Exception as e:
-            print(f'[!] Get assert dataframe failed. {e}')
-
-
-    def get_dataset(self):
-        print(f'[+] execute sql is {self.query}')
-        result = self.conn.query(self.query)
-        # print(result)
-        try:
-            dataset = pd.DataFrame(result)
-            if dataset.empty:
-                raise ValueError('[!]get data failed!')
-            return dataset
-        except Exception as e:
-            print(f'[!] read data fail! {e}')
-        
+            
 
 
 

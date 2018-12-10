@@ -2,20 +2,14 @@ from app.runner import Dataset
 from app.core import Indicators
 from itertools import chain
 import pandas as pd
-from math import ceil
 
-def get_average_time(totaltime, order_count):
-    if not totaltime:
-        return '0'
-    minu , sec = divmod(totaltime/order_count,60)
-    return f"{int(minu)}.{ceil(sec)}"
 
 
 def main():
 # from . import core
     data = Dataset('dbtest')
-    indicators_dataset = data.get_dataset()
-    assert_data = data.get_assert_data()
+    indicators_dataset = data.get_waybill_df()
+    assert_data = data.get_statistical_data()
     try:
         if not isinstance(assert_data, pd.DataFrame):
             raise ValueError('not dataframe')
@@ -24,15 +18,11 @@ def main():
         # print(dataset.get_dataset().shape)
     i = Indicators(indicators_dataset)
     basic = i.get_indicators_value()
-    timeout = i.get_all_timeout()
-    fraud = i.get_all_fraud()
     duration = i.get_all_duration()
     good_order = data.good_order_dict()
     
     iterchain = chain(
         basic.items(),
-        timeout.items(),
-        fraud.items(),
         duration.items(),
         good_order.items()
     )
@@ -46,9 +36,9 @@ def main():
         for key ,value in name_tuple._asdict().items():
             assertvalue = assert_data.get(key, None)
             result = assertvalue.sum() if assertvalue is not None else 'not found'
-            if value != result:
-                print(f'{key} :\n{value} <--> {result}')
-                print('===========================') 
+            # if value != result:
+            print(f'{key} :\n{value} <--> {result}')
+            print('===========================') 
     # basic_indicators = basic['basic']
     # day_vaild_order_count = basic_indicators.day_valid_order_count
     # noon_vaild_order_count = basic_indicators.noon_valid_order_count
